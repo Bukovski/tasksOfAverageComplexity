@@ -103,15 +103,68 @@ class LocalData {
 const localData = new LocalData();
 
 
+const SwitchClick = (function () {
+  let _firing = false;
+  let _timer = 0;
+  
+  return class {
+    constructor(localData, viewData) {
+      this.localData = localData;
+      this.viewData = viewData;
+    }
+    
+    deleteButtonOneClick(event) {
+      const { tagName, parentNode } = event.target;
+      
+      if (tagName === "SPAN" && parentNode.className === "textParagraph") {
+        const textTag = parentNode.innerHTML.split("<span")[ 0 ];
+        const trimText = textTag.trim();
+        
+        this.localData.removeOne(trimText);
+        this.viewData.removeTag(parentNode);
+      }
+    }
+    
+    editNoteDoubleClick(event) {
+      console.log(event)
+      
+    }
+    
+    managementDoubleSingleClick(event) {
+      if (_firing) {
+        this.editNoteDoubleClick(event);
+        
+        clearTimeout(_timer);
+        _firing = false;
+        
+        return;
+      }
+      
+      _firing = true;
+      _timer = setTimeout(() => {
+        this.deleteButtonOneClick(event);
+        
+        _firing = false;
+      }, 300);
+    }
+  }
+})();
+
+const switchClick = new SwitchClick(localData, viewData);
+
+
 docObj.saveButton.addEventListener('click', (event) => {
   event.preventDefault();
   
-  if (!(localData.checkDuplicate(docObj.textArea.value))) {
-    viewData.wrapperTag(docObj.textArea.value);
+  const areaField = docObj.textArea;
+  
+  if (!(localData.checkDuplicate(areaField.value))) {
+    localData.saveOne(areaField.value);
     
-    localData.saveOne(docObj.textArea.value);
+    viewData.wrapperTag(areaField.value);
   }
 });
+
 
 docObj.clearListButton.addEventListener('click', (event) => {
   event.preventDefault();
@@ -119,60 +172,10 @@ docObj.clearListButton.addEventListener('click', (event) => {
   localStorage.removeItem('textList');
   
   viewData.clearDom()
-} );
+});
 
 
-
-
-
-docObj.listNotes.addEventListener("click", switchDoubleSingleClick);
-
-const objSwitchClick = {
-  firing: false,
-  timer: 0
-};
-
-function switchDoubleSingleClick(event) {
-  console.log(objSwitchClick.timer)
-  console.log(objSwitchClick.firing)
-  
-  if (objSwitchClick.firing){
-    editNoteDoubleClick(event);
-  
-    clearTimeout(objSwitchClick.timer);
-    objSwitchClick.firing = false;
-    
-    return;
-  }
-  
-  objSwitchClick.firing = true;
-  
-  objSwitchClick.timer = setTimeout(() => {
-    deleteButtonOneClick(event);
-    
-    objSwitchClick.firing = false;
-  }, 300);
-}
-
-function deleteButtonOneClick(event) {
-  console.log('test calls');
-  
-  const { tagName, parentNode } = event.target;
-  
-  if (tagName === "SPAN" && parentNode.className === "textParagraph") {
-    const textTag = parentNode.innerHTML.split("<span")[ 0 ];
-    
-    localData.removeOne(textTag);
-    
-    viewData.removeTag(parentNode);
-  }
-}
-
-function editNoteDoubleClick(event) {
-  console.log('==', objSwitchClick.timer)
-  
-  console.log(event)
-}
+docObj.listNotes.addEventListener("click", (event) => switchClick.managementDoubleSingleClick(event));
 
 
 
