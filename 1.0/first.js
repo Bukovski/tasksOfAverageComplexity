@@ -3,7 +3,9 @@ const doc = document;
 const docObj = {
   textArea: doc.getElementsByTagName('textarea')[0],
   saveButton: doc.getElementsByTagName('button')[0],
-  clearButton: doc.getElementsByTagName('button')[1],
+  clearAreaButton: doc.getElementsByTagName('button')[1],
+  clearListButton: doc.getElementsByTagName('button')[2],
+  listNotes: doc.getElementById('listNotes'),
   tagP: doc.getElementsByTagName('p')
 };
 
@@ -23,8 +25,7 @@ class ViewData {
     span.appendChild(doc.createTextNode(' ' + String.fromCharCode(10006))); //вставляем крест
     p.appendChild(doc.createTextNode(text)); //текст перед крестом
     
-    // const tagP = this.docObj.textArea.parentNode.insertBefore(p, doc.body.firstChild); //p перед textarea
-    const tagP = this.docObj.textArea.parentNode.appendChild(p); //p после
+    const tagP = this.docObj.listNotes.appendChild(p); //listNotes --> p
     tagP.appendChild(span); //добавили в p -> span
   }
   storageShow(listObj) {
@@ -112,7 +113,7 @@ docObj.saveButton.addEventListener('click', (event) => {
   }
 });
 
-docObj.clearButton.addEventListener('click', (event) => {
+docObj.clearListButton.addEventListener('click', (event) => {
   event.preventDefault();
   
   localStorage.removeItem('textList');
@@ -121,18 +122,56 @@ docObj.clearButton.addEventListener('click', (event) => {
 } );
 
 
-doc.body.addEventListener("click", deleteButton);
 
-function deleteButton(even) {
-  const { tagName, parentNode } = even.target;
+
+
+docObj.listNotes.addEventListener("click", switchDoubleSingleClick);
+
+const objSwitchClick = {
+  firing: false,
+  timer: 0
+};
+
+function switchDoubleSingleClick(event) {
+  console.log(objSwitchClick.timer)
+  console.log(objSwitchClick.firing)
+  
+  if (objSwitchClick.firing){
+    editNoteDoubleClick(event);
+  
+    clearTimeout(objSwitchClick.timer);
+    objSwitchClick.firing = false;
+    
+    return;
+  }
+  
+  objSwitchClick.firing = true;
+  
+  objSwitchClick.timer = setTimeout(() => {
+    deleteButtonOneClick(event);
+    
+    objSwitchClick.firing = false;
+  }, 300);
+}
+
+function deleteButtonOneClick(event) {
+  console.log('test calls');
+  
+  const { tagName, parentNode } = event.target;
   
   if (tagName === "SPAN" && parentNode.className === "textParagraph") {
-    const textTag = parentNode.innerHTML.split("<span")[0];
+    const textTag = parentNode.innerHTML.split("<span")[ 0 ];
     
     localData.removeOne(textTag);
     
     viewData.removeTag(parentNode);
   }
+}
+
+function editNoteDoubleClick(event) {
+  console.log('==', objSwitchClick.timer)
+  
+  console.log(event)
 }
 
 
@@ -143,3 +182,6 @@ function deleteButton(even) {
 
 
 window.onload = () => viewData.storageShow(localData.parse());
+
+//one and double click
+//http://qaru.site/questions/242268/how-to-use-both-onclick-and-ondblclick-on-an-element
