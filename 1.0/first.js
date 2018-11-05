@@ -8,39 +8,43 @@ const docObj = {
 };
 
 
-function createWrapperTag(docObj, text) {
-  const p = doc.createElement('p');
-  const span = doc.createElement('span');
-  
-  p.className = "textParagraph";
-  span.className = "delete";
-  
-  span.appendChild(doc.createTextNode(' ' + String.fromCharCode(10006))); //вставляем крест
-  p.appendChild(doc.createTextNode(text)); //текст перед крестом
-  
-  // const tagP = docObj.textArea.parentNode.insertBefore(p, doc.body.firstChild); //вставляем на страницу p перед textarea
-  const tagP = docObj.textArea.parentNode.appendChild(p); //вставляем на страницу p после
-  tagP.appendChild(span); //добавили в p -> span
-}
-
-function localStorageShow(listObj) {
-  for(let list in listObj) {
-    createWrapperTag(docObj, list);
+class ViewData {
+  constructor(docObj) {
+    this.docObj = docObj;
   }
-}
-
-function clearDom(tag) {
-  let length = tag.length;
-  
-  while(length) {
-    length--;
+  wrapperTag(text) {
+    const p = doc.createElement('p');
+    const span = doc.createElement('span');
     
-    tag[length].remove();
+    p.className = "textParagraph";
+    span.className = "delete";
+    
+    span.appendChild(doc.createTextNode(' ' + String.fromCharCode(10006))); //вставляем крест
+    p.appendChild(doc.createTextNode(text)); //текст перед крестом
+    
+    // const tagP = this.docObj.textArea.parentNode.insertBefore(p, doc.body.firstChild); //p перед textarea
+    const tagP = this.docObj.textArea.parentNode.appendChild(p); //p после
+    tagP.appendChild(span); //добавили в p -> span
   }
+  storageShow(listObj) {
+    for(let list in listObj) {
+      this.wrapperTag(this.docObj, list);
+    }
+  }
+  clearDom() {
+    let length = this.docObj.tagP.length;
+    
+    while(length) {
+      length--;
   
-  return null;
+      this.docObj.tagP[length].remove();
+    }
+    
+    return null;
+  }
 }
 
+const viewData = new ViewData(docObj);
 
 
 class LocalData {
@@ -87,7 +91,8 @@ docObj.saveButton.addEventListener('click', (event) => {
   event.preventDefault();
   
   if (!(localData.checkDuplicate(docObj.textArea.value))) {
-    createWrapperTag(docObj, docObj.textArea.value);
+    viewData.wrapperTag(docObj.textArea.value);
+    
     localData.save(docObj.textArea.value);
   }
 });
@@ -97,7 +102,7 @@ docObj.clearButton.addEventListener('click', (event) => {
   
   localStorage.removeItem('textList');
   
-  clearDom(docObj.tagP)
+  viewData.clearDom()
 } );
 
 
@@ -110,4 +115,4 @@ docObj.clearButton.addEventListener('click', (event) => {
 
 
 
-window.onload = () => localStorageShow(localData.parse());
+window.onload = () => viewData.storageShow(localData.parse());
