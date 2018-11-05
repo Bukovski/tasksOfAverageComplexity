@@ -23,44 +23,6 @@ function createWrapperTag(docObj, text) {
   tagP.appendChild(span); //добавили в p -> span
 }
 
-
-function localStorageParse() {
-  //не помешает кэширование данных чтобы не бегать постоянно к данным
-  if (!localStorage.textList) {
-    localStorage.textList = '{}'
-  }
-  
-  let listObj;
-  
-  try {
-    listObj = JSON.parse(localStorage.textList);
-  } catch (e) {
-    return {};
-  }
-  
-  return listObj;
-}
-
-
-function localStorageSave(listObj, text) {
-  text = text.trim();
-  listObj[text] = "1";
-  
-  localStorage.textList = JSON.stringify(listObj);
-  
-  return listObj;
-}
-
-function localStorageDuplicateCheck(listObj, text) {
-  text = text.trim();
-  
-  return !!listObj[text]
-}
-
-// console.log(localStorageDuplicateCheck(localStorageParse(), 'some text')); //true
-// console.log(localStorageDuplicateCheck(localStorageParse(), 'some text111')); //false
-
-
 function localStorageShow(listObj) {
   for(let list in listObj) {
     createWrapperTag(docObj, list);
@@ -72,7 +34,7 @@ function clearDom(tag) {
   
   while(length) {
     length--;
-  
+    
     tag[length].remove();
   }
   
@@ -80,12 +42,53 @@ function clearDom(tag) {
 }
 
 
+
+class LocalData {
+  constructor() {
+    this.listObj = {};
+  }
+  parse() {
+    //не помешает кэширование данных чтобы не бегать постоянно к данным
+    if (!localStorage.textList) {
+      localStorage.textList = '{}'
+    }
+    
+    try {
+      this.listObj = JSON.parse(localStorage.textList);
+    } catch (e) {
+      return {};
+    }
+    
+    return this.listObj;
+  }
+  save(text) {
+    this.parse();
+    
+    text = text.trim();
+    this.listObj[text] = "1";
+    
+    localStorage.textList = JSON.stringify(this.listObj);
+    
+    return this.listObj;
+  }
+  checkDuplicate(text) {
+    this.parse();
+    
+    text = text.trim();
+    
+    return !!this.listObj[text]
+  }
+}
+
+const localData = new LocalData();
+
+
 docObj.saveButton.addEventListener('click', (event) => {
   event.preventDefault();
   
-  if (!(localStorageDuplicateCheck(localStorageParse(), docObj.textArea.value))) {
+  if (!(localData.checkDuplicate(docObj.textArea.value))) {
     createWrapperTag(docObj, docObj.textArea.value);
-    localStorageSave(localStorageParse(), docObj.textArea.value);
+    localData.save(docObj.textArea.value);
   }
 });
 
@@ -107,13 +110,4 @@ docObj.clearButton.addEventListener('click', (event) => {
 
 
 
-window.onload = () => localStorageShow(localStorageParse());
-
-
-
-
-
-
-/*
-Функция высшего порядка — это функция, которая принимает другую функцию в качестве аргумента, или это функция, которая будет возвращать в результате другую функцию (или и то, и другое).
- */
+window.onload = () => localStorageShow(localData.parse());
