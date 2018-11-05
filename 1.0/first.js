@@ -12,6 +12,7 @@ class ViewData {
   constructor(docObj) {
     this.docObj = docObj;
   }
+  
   wrapperTag(text) {
     const p = doc.createElement('p');
     const span = doc.createElement('span');
@@ -28,8 +29,11 @@ class ViewData {
   }
   storageShow(listObj) {
     for(let list in listObj) {
-      this.wrapperTag(this.docObj, list);
+      this.wrapperTag(list);
     }
+  }
+  removeTag(tag) {
+    return tag.remove();
   }
   clearDom() {
     let length = this.docObj.tagP.length;
@@ -37,7 +41,7 @@ class ViewData {
     while(length) {
       length--;
   
-      this.docObj.tagP[length].remove();
+      this.removeTag(this.docObj.tagP[length]);
     }
     
     return null;
@@ -51,6 +55,7 @@ class LocalData {
   constructor() {
     this.listObj = {};
   }
+  
   parse() {
     //не помешает кэширование данных чтобы не бегать постоянно к данным
     if (!localStorage.textList) {
@@ -65,15 +70,18 @@ class LocalData {
     
     return this.listObj;
   }
-  save(text) {
-    this.parse();
-    
-    text = text.trim();
-    this.listObj[text] = "1";
-    
+  save() {
     localStorage.textList = JSON.stringify(this.listObj);
     
     return this.listObj;
+  }
+  saveOne(text) {
+    this.parse();
+  
+    text = text.trim();
+    this.listObj[text] = "1";
+    
+    this.save();
   }
   checkDuplicate(text) {
     this.parse();
@@ -81,6 +89,13 @@ class LocalData {
     text = text.trim();
     
     return !!this.listObj[text]
+  }
+  removeOne(value) {
+    this.parse();
+    
+    delete this.listObj[value];
+  
+    this.save();
   }
 }
 
@@ -93,7 +108,7 @@ docObj.saveButton.addEventListener('click', (event) => {
   if (!(localData.checkDuplicate(docObj.textArea.value))) {
     viewData.wrapperTag(docObj.textArea.value);
     
-    localData.save(docObj.textArea.value);
+    localData.saveOne(docObj.textArea.value);
   }
 });
 
@@ -106,7 +121,19 @@ docObj.clearButton.addEventListener('click', (event) => {
 } );
 
 
+doc.body.addEventListener("click", deleteButton);
 
+function deleteButton(even) {
+  const { tagName, parentNode } = even.target;
+  
+  if (tagName === "SPAN" && parentNode.className === "textParagraph") {
+    const textTag = parentNode.innerHTML.split("<span")[0];
+    
+    localData.removeOne(textTag);
+    
+    viewData.removeTag(parentNode);
+  }
+}
 
 
 
