@@ -178,6 +178,83 @@ const SwitchClick = (function () {
 const switchClick = new SwitchClick({ localData, viewData, docObj });
 
 
+
+const cookieData = (function () {
+  function _replace(value) {
+    return value.replace(/(<|>|_|@|{|}|\[|\])/g, '');
+  }
+  function _encode(value) {
+    return _replace(encodeURIComponent(String(value)));
+  }
+  
+  function _decode(value) {
+    return _replace(decodeURIComponent(String(value)));
+  }
+  
+  
+  function set(key, value, attr = {}) {
+    if (typeof document === 'undefined' || !key || typeof attr !== 'object') return;
+    
+    if (attr.expires && typeof attr.expires === 'number') {
+      // attr.expires = new Date(new Date() * 1 + attr.expires * 1000 * 60 * 60 * 24);
+      attr.expires = new Date(new Date() * 1 + attr.expires * 864e+5);
+    }
+  
+    attr.expires = (attr.expires) ? attr.expires.toUTCString() : '';
+  
+    let result = JSON.stringify(value);
+    
+    key = _encode(key);
+    value = _encode(result);
+  
+    attr.path = (attr.path) ? attr.path : '/';
+    attr.domain = (attr.domain) ? attr.domain : '';
+    attr.secure = (attr.secure) ? "secure" : '';
+  
+    let stringAttributes = '';
+    
+    for (let keyAttr in attr) {
+      if (attr[keyAttr]) {
+        if (keyAttr !== "secure") {
+          stringAttributes += '; ' + keyAttr + '=' + attr[ keyAttr ];
+        } else {
+          stringAttributes += '; ' + keyAttr;
+        }
+      }
+    }
+    
+    return (document.cookie = key + '=' + value + stringAttributes);
+  }
+  function get(key) {
+    if (typeof document === 'undefined' || !key || typeof key !== 'string') return;
+   
+    let cookies = document.cookie ? document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)') : [];
+    
+    return _decode(cookies[2]);
+  }
+  function remove(key) {
+    return set(key, '', { expires: -1 });
+  }
+  
+  return {
+    set,
+    get,
+    remove
+  }
+})();
+
+cookieData.set("area", "awesome text", { expires: 7, path: '' });
+// cookieData.set("area", "awesome text", { expires: 7, secure: false });
+// cookieData.remove("area");
+console.log(cookieData.get("area"));
+// console.log(cookieData.remove("area"));
+// cookieData.set("area", "some text");
+// cookieData.set("area", "new 55↵text");
+cookieData.set("area", "new 55↵text<>lkj@_dfdf");
+console.log(cookieData.get("area"));
+
+
+
 docObj.saveButton.addEventListener('click', (event) => {
   event.preventDefault();
   
