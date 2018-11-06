@@ -10,6 +10,8 @@ const docObj = {
 };
 
 
+let clickEditTag = '';
+
 class ViewData {
   constructor(docObj) {
     this.docObj = docObj;
@@ -53,18 +55,18 @@ const viewData = new ViewData(docObj);
 
 
 class LocalData {
-  constructor() {
+  constructor(dataName) {
     this.listObj = {};
+    this.dataName = dataName;
   }
   
   parse() {
-    //не помешает кэширование данных чтобы не бегать постоянно к данным
-    if (!localStorage.textList) {
-      localStorage.textList = '{}'
+    if (!localStorage[this.dataName]) {
+      localStorage[this.dataName] = '{}'
     }
     
     try {
-      this.listObj = JSON.parse(localStorage.textList);
+      this.listObj = JSON.parse(localStorage[this.dataName]);
     } catch (e) {
       return {};
     }
@@ -72,7 +74,7 @@ class LocalData {
     return this.listObj;
   }
   save() {
-    localStorage.textList = JSON.stringify(this.listObj);
+    localStorage[this.dataName]= JSON.stringify(this.listObj);
     
     return this.listObj;
   }
@@ -98,9 +100,17 @@ class LocalData {
   
     this.save();
   }
+  changeOne(oldValue, newValue) {
+    const structuringDataOld = JSON.stringify(oldValue);
+    const structuringDataNew = JSON.stringify(newValue);
+    
+    const changeData = localStorage[this.dataName].replace(structuringDataOld, structuringDataNew);
+  
+    localStorage[this.dataName] = changeData;
+  }
 }
 
-const localData = new LocalData();
+const localData = new LocalData("textList");
 
 
 const SwitchClick = (function () {
@@ -108,49 +118,61 @@ const SwitchClick = (function () {
   let _timer = 0;
   
   return class {
-    constructor(localData, viewData) {
+    constructor({ localData, viewData, docObj }) {
       this.localData = localData;
       this.viewData = viewData;
+      this.docObj = docObj;
     }
     
+    textFromTag(value) {
+      const textTag = value.innerHTML.split("<span")[ 0 ];
+      
+      return textTag.trim();
+    }
     deleteButtonOneClick(event) {
       const { tagName, parentNode } = event.target;
       
       if (tagName === "SPAN" && parentNode.className === "textParagraph") {
-        const textTag = parentNode.innerHTML.split("<span")[ 0 ];
-        const trimText = textTag.trim();
+        const trimText = this.textFromTag(parentNode);
         
         this.localData.removeOne(trimText);
         this.viewData.removeTag(parentNode);
       }
     }
-    
     editNoteDoubleClick(event) {
-      console.log(event)
+      const target = event.target;
       
+      if (target.tagName === "P" && target.className === "textParagraph") {
+        const trimText = this.textFromTag(event.target);
+  
+        this.docObj.textArea.value = trimText;
+  
+        clickEditTag = target;
+      }
     }
-    
     managementDoubleSingleClick(event) {
-      if (_firing) {
-        this.editNoteDoubleClick(event);
-        
+      if (_firing) { //двойной клик
         clearTimeout(_timer);
         _firing = false;
+        
+        this.editNoteDoubleClick(event);
         
         return;
       }
       
       _firing = true;
-      _timer = setTimeout(() => {
+      _timer = setTimeout(() => { //один клик, если через 300 мск не кликнули второй раз то вызвать
         this.deleteButtonOneClick(event);
         
         _firing = false;
       }, 300);
+      
+      return false;
     }
   }
 })();
 
-const switchClick = new SwitchClick(localData, viewData);
+const switchClick = new SwitchClick({ localData, viewData, docObj });
 
 
 docObj.saveButton.addEventListener('click', (event) => {
@@ -159,11 +181,34 @@ docObj.saveButton.addEventListener('click', (event) => {
   const areaField = docObj.textArea;
   
   if (!(localData.checkDuplicate(areaField.value))) {
-    localData.saveOne(areaField.value);
-    
-    viewData.wrapperTag(areaField.value);
+    if (clickEditTag) {
+      editClickNote(areaField.value);
+    } else {
+      localData.saveOne(areaField.value);
+  
+      viewData.wrapperTag(areaField.value);
+    }
   }
 });
+
+function editClickNote(value) { //придумать куда засунуть
+  //clickEditTag  надо избавиться, сейчас глобальная в верху
+  
+  // console.log(value);
+  // console.dir(clickEditTag);
+  value = value.trim();
+  
+  const oldText = switchClick.textFromTag(clickEditTag);
+  const newText = clickEditTag.innerHTML.replace(oldText, value);
+  
+  clickEditTag.innerHTML = newText;
+  
+  localData.changeOne(oldText, value);
+  
+  clickEditTag = '';
+  
+}
+
 
 
 docObj.clearListButton.addEventListener('click', (event) => {
@@ -175,7 +220,12 @@ docObj.clearListButton.addEventListener('click', (event) => {
 });
 
 
-docObj.listNotes.addEventListener("click", (event) => switchClick.managementDoubleSingleClick(event));
+docObj.listNotes.addEventListener("click", (event) => {
+  event.stopPropagation();
+  event.preventDefault();
+  
+  switchClick.managementDoubleSingleClick(event)
+});
 
 
 
