@@ -100,6 +100,9 @@ class LocalData {
   
     this.save();
   }
+  removeAll() {
+    localStorage.removeItem(this.dataName);
+  }
   changeOne(oldValue, newValue) {
     const structuringDataOld = JSON.stringify(oldValue);
     const structuringDataNew = JSON.stringify(newValue);
@@ -214,7 +217,7 @@ function editClickNote(value) { //придумать куда засунуть
 docObj.clearListButton.addEventListener('click', (event) => {
   event.preventDefault();
   
-  localStorage.removeItem('textList');
+  localData.removeAll();
   
   viewData.clearDom()
 });
