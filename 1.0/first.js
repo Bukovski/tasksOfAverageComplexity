@@ -10,9 +10,7 @@ const docObj = {
 };
 
 
-let clickEditTag = '';
-
-class ViewData {
+class ViewList {
   constructor(docObj) {
     this.docObj = docObj;
   }
@@ -43,7 +41,7 @@ class ViewData {
     
     while(length) {
       length--;
-  
+      
       this.removeTag(this.docObj.tagP[length]);
     }
     
@@ -51,7 +49,7 @@ class ViewData {
   }
 }
 
-const viewData = new ViewData(docObj);
+const viewList = new ViewList(docObj);
 
 
 class LocalData {
@@ -74,13 +72,13 @@ class LocalData {
     return this.listObj;
   }
   save() {
-    localStorage[this.dataName]= JSON.stringify(this.listObj);
+    localStorage[this.dataName] = JSON.stringify(this.listObj);
     
     return this.listObj;
   }
   saveOne(text) {
     this.parse();
-  
+    
     text = text.trim();
     this.listObj[text] = "1";
     
@@ -97,7 +95,7 @@ class LocalData {
     this.parse();
     
     delete this.listObj[value];
-  
+    
     this.save();
   }
   removeAll() {
@@ -108,7 +106,7 @@ class LocalData {
     const structuringDataNew = JSON.stringify(newValue);
     
     const changeData = localStorage[this.dataName].replace(structuringDataOld, structuringDataNew);
-  
+    
     localStorage[this.dataName] = changeData;
   }
 }
@@ -121,10 +119,12 @@ const SwitchClick = (function () {
   let _timer = 0;
   
   return class {
-    constructor({ localData, viewData, docObj }) {
+    constructor({ localData, viewList, docObj }) {
       this.localData = localData;
-      this.viewData = viewData;
+      this.viewList = viewList;
       this.docObj = docObj;
+      
+      this.clickEditTag = '';
     }
     
     textFromTag(value) {
@@ -139,7 +139,7 @@ const SwitchClick = (function () {
         const trimText = this.textFromTag(parentNode);
         
         this.localData.removeOne(trimText);
-        this.viewData.removeTag(parentNode);
+        this.viewList.removeTag(parentNode);
       }
     }
     editNoteDoubleClick(event) {
@@ -147,10 +147,10 @@ const SwitchClick = (function () {
       
       if (target.tagName === "P" && target.className === "textParagraph") {
         const trimText = this.textFromTag(event.target);
-  
+        
         this.docObj.textArea.value = trimText;
-  
-        clickEditTag = target;
+        
+        this.clickEditTag = target;
       }
     }
     managementDoubleSingleClick(event) {
@@ -175,7 +175,7 @@ const SwitchClick = (function () {
   }
 })();
 
-const switchClick = new SwitchClick({ localData, viewData, docObj });
+const switchClick = new SwitchClick({ localData, viewList, docObj });
 
 
 
@@ -183,6 +183,7 @@ const cookieData = (function () {
   function _replace(value) {
     return value.replace(/(<|>|_|@|{|}|\[|\])/g, '');
   }
+  
   function _encode(value) {
     return _replace(encodeURIComponent(String(value)));
   }
@@ -199,21 +200,21 @@ const cookieData = (function () {
       // attr.expires = new Date(new Date() * 1 + attr.expires * 1000 * 60 * 60 * 24);
       attr.expires = new Date(new Date() * 1 + attr.expires * 864e+5);
     }
-  
+    
     attr.expires = (attr.expires) ? attr.expires.toUTCString() : '';
-  
-    let result = JSON.stringify(value);
     
     key = _encode(key);
-    value = _encode(result);
-  
+    value = _encode(value);
+    
     attr.path = (attr.path) ? attr.path : '/';
     attr.domain = (attr.domain) ? attr.domain : '';
     attr.secure = (attr.secure) ? "secure" : '';
-  
+    
     let stringAttributes = '';
     
     for (let keyAttr in attr) {
+      if (!attr.hasOwnProperty(keyAttr)) continue;
+      
       if (attr[keyAttr]) {
         if (keyAttr !== "secure") {
           stringAttributes += '; ' + keyAttr + '=' + attr[ keyAttr ];
@@ -225,13 +226,15 @@ const cookieData = (function () {
     
     return (document.cookie = key + '=' + value + stringAttributes);
   }
+  
   function get(key) {
     if (typeof document === 'undefined' || !key || typeof key !== 'string') return;
-   
+    
     let cookies = document.cookie ? document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)') : [];
     
     return _decode(cookies[2]);
   }
+  
   function remove(key) {
     return set(key, '', { expires: -1 });
   }
@@ -243,16 +246,49 @@ const cookieData = (function () {
   }
 })();
 
-cookieData.set("area", "awesome text", { expires: 7, path: '' });
+// cookieData.set("area", "awesome text", { expires: 7, path: '' });
 // cookieData.set("area", "awesome text", { expires: 7, secure: false });
-// cookieData.remove("area");
-console.log(cookieData.get("area"));
-// console.log(cookieData.remove("area"));
-// cookieData.set("area", "some text");
+// cookieData.set("area", "new 55↵text<>lkj@_dfdf");
 // cookieData.set("area", "new 55↵text");
-cookieData.set("area", "new 55↵text<>lkj@_dfdf");
-console.log(cookieData.get("area"));
+// cookieData.set("area", "some text");
+// cookieData.remove("area");
+// console.log(cookieData.get("area"));
 
+class TextAreaField {
+  constructor(docObj, cookie) {
+    this.area = docObj.textArea;
+    this.cookie = cookie;
+  }
+  
+  get() {
+    const areaCookie = this.cookie.get("area");
+    
+    return this.area.value = (areaCookie !== "undefined") ? areaCookie.replace(/↵/g, '\n ') : '';
+  }
+  set() {
+    this.cookie.set("area", this.area.value, { expires: 7 })
+  }
+  clear() {
+    this.cookie.remove("area");
+    this.area.value = '';
+  }
+}
+
+const textAreaField = new TextAreaField(docObj, cookieData);
+
+
+function editClickNote(value, editTag) {
+  value = value.trim();
+  
+  const oldText = switchClick.textFromTag(editTag);
+  const newText = editTag.innerHTML.replace(oldText, value);
+  
+  editTag.innerHTML = newText;
+  
+  localData.changeOne(oldText, value);
+  
+  editTag = '';
+}
 
 
 docObj.saveButton.addEventListener('click', (event) => {
@@ -261,34 +297,24 @@ docObj.saveButton.addEventListener('click', (event) => {
   const areaField = docObj.textArea;
   
   if (!(localData.checkDuplicate(areaField.value))) {
-    if (clickEditTag) {
-      editClickNote(areaField.value);
+    const editTag = switchClick.clickEditTag;
+    
+    if (editTag) {
+      editClickNote(areaField.value, editTag);
     } else {
       localData.saveOne(areaField.value);
-  
-      viewData.wrapperTag(areaField.value);
+      
+      viewList.wrapperTag(areaField.value);
     }
+    
+    textAreaField.set();
   }
 });
 
-function editClickNote(value) { //придумать куда засунуть
-  //clickEditTag  надо избавиться, сейчас глобальная в верху
-  
-  // console.log(value);
-  // console.dir(clickEditTag);
-  value = value.trim();
-  
-  const oldText = switchClick.textFromTag(clickEditTag);
-  const newText = clickEditTag.innerHTML.replace(oldText, value);
-  
-  clickEditTag.innerHTML = newText;
-  
-  localData.changeOne(oldText, value);
-  
-  clickEditTag = '';
-  
-}
 
+docObj.clearAreaButton.addEventListener('click', (event) => {
+  textAreaField.clear();
+});
 
 
 docObj.clearListButton.addEventListener('click', (event) => {
@@ -296,7 +322,7 @@ docObj.clearListButton.addEventListener('click', (event) => {
   
   localData.removeAll();
   
-  viewData.clearDom()
+  viewList.clearDom()
 });
 
 
@@ -309,12 +335,12 @@ docObj.listNotes.addEventListener("click", (event) => {
 
 
 
+window.onload = () => {
+  textAreaField.get();
+  
+  viewList.storageShow(localData.parse());
+};
 
-
-
-
-
-window.onload = () => viewData.storageShow(localData.parse());
 
 //one and double click
 //http://qaru.site/questions/242268/how-to-use-both-onclick-and-ondblclick-on-an-element
