@@ -153,6 +153,9 @@ const SwitchClick = (function () {
         this.clickEditTag = target;
       }
     }
+    cleanTag() {
+      this.clickEditTag = '';
+    }
     managementDoubleSingleClick(event) {
       if (_firing) { //двойной клик
         clearTimeout(_timer);
@@ -277,7 +280,7 @@ class TextAreaField {
 const textAreaField = new TextAreaField(docObj, cookieData);
 
 
-function editClickNote(value, editTag) {
+function editClickNote(value, editTag, clear) {
   value = value.trim();
   
   const oldText = switchClick.textFromTag(editTag);
@@ -287,7 +290,7 @@ function editClickNote(value, editTag) {
   
   localData.changeOne(oldText, value);
   
-  editTag = '';
+  clear();
 }
 
 
@@ -296,11 +299,9 @@ docObj.saveButton.addEventListener('click', (event) => {
   
   const areaField = docObj.textArea;
   
-  if (!(localData.checkDuplicate(areaField.value))) {
-    const editTag = switchClick.clickEditTag;
-    
-    if (editTag) {
-      editClickNote(areaField.value, editTag);
+  if (areaField.value.trim().length && !(localData.checkDuplicate(areaField.value))) {
+    if (switchClick.clickEditTag) {
+      editClickNote(areaField.value, switchClick.clickEditTag, switchClick.cleanTag);
     } else {
       localData.saveOne(areaField.value);
       
@@ -340,7 +341,3 @@ window.onload = () => {
   
   viewList.storageShow(localData.parse());
 };
-
-
-//one and double click
-//http://qaru.site/questions/242268/how-to-use-both-onclick-and-ondblclick-on-an-element
