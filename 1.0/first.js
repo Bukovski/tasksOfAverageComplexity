@@ -52,64 +52,74 @@ class ViewList {
 const viewList = new ViewList(docObj);
 
 
-class LocalData {
-  constructor(dataName) {
-    this.listObj = {};
-    this.dataName = dataName;
-  }
+const LocalData = (function () {
+  let _dataName;
   
-  parse() {
-    if (!localStorage[this.dataName]) {
-      localStorage[this.dataName] = '{}'
+  return class {
+    constructor(dataName) {
+      this.listObj = {};
+      _dataName = dataName;
     }
     
-    try {
-      this.listObj = JSON.parse(localStorage[this.dataName]);
-    } catch (e) {
-      return {};
+    parse() {
+      if (!localStorage[ _dataName ]) {
+        localStorage[ _dataName ] = '{}'
+      }
+      
+      try {
+        this.listObj = JSON.parse(localStorage[ _dataName ]);
+      } catch (e) {
+        return {};
+      }
+      
+      return this.listObj;
     }
     
-    return this.listObj;
+    save() {
+      localStorage[ _dataName ] = JSON.stringify(this.listObj);
+      
+      return this.listObj;
+    }
+    
+    saveOne(text) {
+      this.parse();
+      
+      text = text.trim();
+      this.listObj[ text ] = "1";
+      
+      this.save();
+    }
+    
+    checkDuplicate(text) {
+      this.parse();
+      
+      text = text.trim();
+      
+      return !!this.listObj[ text ]
+    }
+    
+    removeOne(value) {
+      this.parse();
+      
+      delete this.listObj[ value ];
+      
+      this.save();
+    }
+    
+    removeAll() {
+      localStorage.removeItem(_dataName);
+    }
+    
+    changeOne(oldValue, newValue) {
+      const structuringDataOld = JSON.stringify(oldValue);
+      const structuringDataNew = JSON.stringify(newValue);
+      
+      const changeData = localStorage[ _dataName ].replace(structuringDataOld, structuringDataNew);
+      
+      localStorage[ _dataName ] = changeData;
+    }
   }
-  save() {
-    localStorage[this.dataName] = JSON.stringify(this.listObj);
-    
-    return this.listObj;
-  }
-  saveOne(text) {
-    this.parse();
-    
-    text = text.trim();
-    this.listObj[text] = "1";
-    
-    this.save();
-  }
-  checkDuplicate(text) {
-    this.parse();
-    
-    text = text.trim();
-    
-    return !!this.listObj[text]
-  }
-  removeOne(value) {
-    this.parse();
-    
-    delete this.listObj[value];
-    
-    this.save();
-  }
-  removeAll() {
-    localStorage.removeItem(this.dataName);
-  }
-  changeOne(oldValue, newValue) {
-    const structuringDataOld = JSON.stringify(oldValue);
-    const structuringDataNew = JSON.stringify(newValue);
-    
-    const changeData = localStorage[this.dataName].replace(structuringDataOld, structuringDataNew);
-    
-    localStorage[this.dataName] = changeData;
-  }
-}
+})();
 
 const localData = new LocalData("textList");
 
@@ -280,17 +290,17 @@ class TextAreaField {
 const textAreaField = new TextAreaField(docObj, cookieData);
 
 
-function editClickNote(value, editTag, clear) {
+function editClickNote(value, editTag, saveData) {
   value = value.trim();
   
-  const oldText = switchClick.textFromTag(editTag);
-  const newText = editTag.innerHTML.replace(oldText, value);
+  const oldText = editTag.textFromTag(editTag.clickEditTag);
+  const newText = editTag.clickEditTag.innerHTML.replace(oldText, value);
   
-  editTag.innerHTML = newText;
+  editTag.clickEditTag.innerHTML = newText;
   
-  localData.changeOne(oldText, value);
+  saveData.changeOne(oldText, value);
   
-  clear();
+  editTag.cleanTag();
 }
 
 
@@ -301,7 +311,7 @@ docObj.saveButton.addEventListener('click', (event) => {
   
   if (areaField.value.trim().length && !(localData.checkDuplicate(areaField.value))) {
     if (switchClick.clickEditTag) {
-      editClickNote(areaField.value, switchClick.clickEditTag, switchClick.cleanTag);
+      editClickNote(areaField.value, switchClick, localData);
     } else {
       localData.saveOne(areaField.value);
       
