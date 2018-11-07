@@ -10,48 +10,6 @@ const docObj = {
 };
 
 
-class ViewList {
-  constructor(docObj) {
-    this.docObj = docObj;
-  }
-  
-  wrapperTag(text) {
-    const p = doc.createElement('p');
-    const span = doc.createElement('span');
-    
-    p.className = "textParagraph";
-    span.className = "delete";
-    
-    span.appendChild(doc.createTextNode(' ' + String.fromCharCode(10006))); //вставляем крест
-    p.appendChild(doc.createTextNode(text)); //текст перед крестом
-    
-    const tagP = this.docObj.listNotes.appendChild(p); //listNotes --> p
-    tagP.appendChild(span); //добавили в p -> span
-  }
-  storageShow(listObj) {
-    for(let list in listObj) {
-      this.wrapperTag(list);
-    }
-  }
-  removeTag(tag) {
-    return tag.remove();
-  }
-  clearDom() {
-    let length = this.docObj.tagP.length;
-    
-    while(length) {
-      length--;
-      
-      this.removeTag(this.docObj.tagP[length]);
-    }
-    
-    return null;
-  }
-}
-
-const viewList = new ViewList(docObj);
-
-
 const LocalData = (function () {
   let _dataName;
   
@@ -122,73 +80,6 @@ const LocalData = (function () {
 })();
 
 const localData = new LocalData("textList");
-
-
-const SwitchClick = (function () {
-  let _firing = false;
-  let _timer = 0;
-  
-  return class {
-    constructor({ localData, viewList, docObj }) {
-      this.localData = localData;
-      this.viewList = viewList;
-      this.docObj = docObj;
-      
-      this.clickEditTag = '';
-    }
-    
-    textFromTag(value) {
-      const textTag = value.innerHTML.split("<span")[ 0 ];
-      
-      return textTag.trim();
-    }
-    deleteButtonOneClick(event) {
-      const { tagName, parentNode } = event.target;
-      
-      if (tagName === "SPAN" && parentNode.className === "textParagraph") {
-        const trimText = this.textFromTag(parentNode);
-        
-        this.localData.removeOne(trimText);
-        this.viewList.removeTag(parentNode);
-      }
-    }
-    editNoteDoubleClick(event) {
-      const target = event.target;
-      
-      if (target.tagName === "P" && target.className === "textParagraph") {
-        const trimText = this.textFromTag(event.target);
-        
-        this.docObj.textArea.value = trimText;
-        
-        this.clickEditTag = target;
-      }
-    }
-    cleanTag() {
-      this.clickEditTag = '';
-    }
-    managementDoubleSingleClick(event) {
-      if (_firing) { //двойной клик
-        clearTimeout(_timer);
-        _firing = false;
-        
-        this.editNoteDoubleClick(event);
-        
-        return;
-      }
-      
-      _firing = true;
-      _timer = setTimeout(() => { //один клик, если через 300 мск не кликнули второй раз то вызвать
-        this.deleteButtonOneClick(event);
-        
-        _firing = false;
-      }, 300);
-      
-      return false;
-    }
-  }
-})();
-
-const switchClick = new SwitchClick({ localData, viewList, docObj });
 
 
 
@@ -267,9 +158,137 @@ const cookieData = (function () {
 // cookieData.remove("area");
 // console.log(cookieData.get("area"));
 
+
+class ViewList {
+  constructor(docObj) {
+    this.docObj = docObj;
+  }
+  
+  wrapperTag(text) {
+    const p = doc.createElement('p');
+    const span = doc.createElement('span');
+    
+    p.className = "textParagraph";
+    span.className = "delete";
+    
+    span.appendChild(doc.createTextNode(' ' + String.fromCharCode(10006))); //вставляем крест
+    p.appendChild(doc.createTextNode(text)); //текст перед крестом
+    
+    const tagP = this.docObj.listNotes.appendChild(p); //listNotes --> p
+    tagP.appendChild(span); //добавили в p -> span
+  }
+  storageShow(listObj) {
+    for(let list in listObj) {
+      this.wrapperTag(list);
+    }
+  }
+  removeTag(tag) {
+    return tag.remove();
+  }
+  clearDom() {
+    let length = this.docObj.tagP.length;
+    
+    while(length) {
+      length--;
+      
+      this.removeTag(this.docObj.tagP[length]);
+    }
+    
+    return null;
+  }
+}
+
+const viewList = new ViewList(docObj);
+
+
+const SwitchClick = (function () {
+  let _firing = false;
+  let _timer = 0;
+  
+  let _localData;
+  let _viewList;
+  let _docObj;
+  
+  return class {
+    constructor(localData, viewList, docObj) {
+      _localData = localData;
+      _viewList = viewList;
+      _docObj = docObj;
+    }
+    
+    textFromTag(value) {
+      const textTag = value.innerHTML.split("<span")[ 0 ];
+      
+      return textTag.trim();
+    }
+    deleteButtonOneClick(event) {
+      const { tagName, parentNode } = event.target;
+      
+      if (tagName === "SPAN" && parentNode.className === "textParagraph") {
+        const trimText = this.textFromTag(parentNode);
+        
+        _localData.removeOne(trimText);
+        _viewList.removeTag(parentNode);
+      }
+    }
+    editNoteDoubleClick(event) {
+      const target = event.target;
+      
+      if (target.tagName === "P" && target.className === "textParagraph") {
+        const trimText = this.textFromTag(event.target);
+        
+        _docObj.textArea.value = trimText;
+        
+        return target;
+      }
+    }
+    managementDoubleSingleClick(event) {
+      if (_firing) { //двойной клик
+        clearTimeout(_timer);
+        _firing = false;
+        
+        return this.editNoteDoubleClick(event);
+      }
+      
+      _firing = true;
+      _timer = setTimeout(() => { //один клик, если через 300 мск не кликнули второй раз то вызвать
+        this.deleteButtonOneClick(event);
+        
+        _firing = false;
+      }, 300);
+      
+      return false;
+    }
+  }
+})();
+
+const switchClick = new SwitchClick(localData, viewList, docObj);
+
+
+class BufferTagNote {
+  constructor() {
+    this.bufferTag = '';
+  }
+  
+  get() {
+    return this.bufferTag;
+  }
+  set(tag) {
+    if (tag) {
+      this.bufferTag = tag;
+    }
+  }
+  clear() {
+    this.bufferTag = '';
+  }
+}
+
+const bufferNote = new BufferTagNote();
+
+
 class TextAreaField {
-  constructor(docObj, cookie) {
-    this.area = docObj.textArea;
+  constructor(textArea, cookie) {
+    this.area = textArea;
     this.cookie = cookie;
   }
   
@@ -287,20 +306,20 @@ class TextAreaField {
   }
 }
 
-const textAreaField = new TextAreaField(docObj, cookieData);
+const textAreaField = new TextAreaField(docObj.textArea, cookieData);
 
 
-function editClickNote(value, editTag, saveData) {
+function editClickNote(value, editTag, bufferTag, saveData) {
   value = value.trim();
   
-  const oldText = editTag.textFromTag(editTag.clickEditTag);
-  const newText = editTag.clickEditTag.innerHTML.replace(oldText, value);
+  const oldText = editTag.textFromTag(bufferTag.get());
+  const newText = bufferTag.get().innerHTML.replace(oldText, value);
   
-  editTag.clickEditTag.innerHTML = newText;
+  bufferTag.get().innerHTML = newText;
   
   saveData.changeOne(oldText, value);
   
-  editTag.cleanTag();
+  bufferTag.clear();
 }
 
 
@@ -310,8 +329,8 @@ docObj.saveButton.addEventListener('click', (event) => {
   const areaField = docObj.textArea;
   
   if (areaField.value.trim().length && !(localData.checkDuplicate(areaField.value))) {
-    if (switchClick.clickEditTag) {
-      editClickNote(areaField.value, switchClick, localData);
+    if (bufferNote.get()) {
+      editClickNote(areaField.value, switchClick, bufferNote, localData);
     } else {
       localData.saveOne(areaField.value);
       
@@ -341,7 +360,7 @@ docObj.listNotes.addEventListener("click", (event) => {
   event.stopPropagation();
   event.preventDefault();
   
-  switchClick.managementDoubleSingleClick(event)
+  bufferNote.set(switchClick.managementDoubleSingleClick(event));
 });
 
 
