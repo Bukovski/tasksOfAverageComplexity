@@ -16,6 +16,7 @@ const LocalData = (function () {
   return class {
     constructor(dataName) {
       this.listObj = {};
+      
       _dataName = dataName;
     }
     
@@ -159,46 +160,54 @@ const cookieData = (function () {
 // console.log(cookieData.get("area"));
 
 
-class ViewList {
-  constructor(docObj) {
-    this.docObj = docObj;
-  }
+const ViewList = (function () {
+  let _tag;
   
-  wrapperTag(text) {
-    const p = doc.createElement('p');
-    const span = doc.createElement('span');
-    
-    p.className = "textParagraph";
-    span.className = "delete";
-    
-    span.appendChild(doc.createTextNode(' ' + String.fromCharCode(10006))); //вставляем крест
-    p.appendChild(doc.createTextNode(text)); //текст перед крестом
-    
-    const tagP = this.docObj.listNotes.appendChild(p); //listNotes --> p
-    tagP.appendChild(span); //добавили в p -> span
-  }
-  storageShow(listObj) {
-    for(let list in listObj) {
-      this.wrapperTag(list);
+  return class {
+    constructor(tag) {
+      _tag = tag;
     }
-  }
-  removeTag(tag) {
-    return tag.remove();
-  }
-  clearDom() {
-    let length = this.docObj.tagP.length;
     
-    while(length) {
-      length--;
+    wrapperTag(insertInto, text) { //insert into
+      const p = document.createElement('p');
+      const span = document.createElement('span');
       
-      this.removeTag(this.docObj.tagP[length]);
+      p.className = "textParagraph";
+      span.className = "delete";
+      
+      span.appendChild(document.createTextNode(' ' + String.fromCharCode(10006))); //вставляем крест
+      p.appendChild(document.createTextNode(text)); //текст перед крестом
+      
+      const tagP = insertInto.appendChild(p); //listNotes --> p
+      
+      tagP.appendChild(span); //добавили в p -> span
     }
     
-    return null;
-  }
-}
+    storageShow(insertInto, listObj) {
+      for (let list in listObj) {
+        this.wrapperTag(insertInto, list);
+      }
+    }
+    
+    removeTag(tag) {
+      return tag.remove();
+    }
+    
+    clearDom() {
+      let length = _tag.length;
+      
+      while (length) {
+        length--;
+        
+        this.removeTag(_tag[ length ]);
+      }
+      
+      return null;
+    }
+  };
+})();
 
-const viewList = new ViewList(docObj);
+const viewList = new ViewList(docObj.tagP);
 
 
 const SwitchClick = (function () {
@@ -207,13 +216,13 @@ const SwitchClick = (function () {
   
   let _localData;
   let _viewList;
-  let _docObj;
+  let _tag;
   
   return class {
-    constructor(localData, viewList, docObj) {
+    constructor(localData, viewList, tag) {
       _localData = localData;
       _viewList = viewList;
-      _docObj = docObj;
+      _tag = tag;
     }
     
     textFromTag(value) {
@@ -237,7 +246,7 @@ const SwitchClick = (function () {
       if (target.tagName === "P" && target.className === "textParagraph") {
         const trimText = this.textFromTag(event.target);
         
-        _docObj.textArea.value = trimText;
+        _tag.value = trimText;
         
         return target;
       }
@@ -262,28 +271,27 @@ const SwitchClick = (function () {
   }
 })();
 
-const switchClick = new SwitchClick(localData, viewList, docObj);
+const switchClick = new SwitchClick(localData, viewList, docObj.textArea);
 
 
-class BufferTagNote {
-  constructor() {
-    this.bufferTag = '';
-  }
+
+const bufferTagNote = (function () {
+  let _bufferTag = '';
   
-  get() {
-    return this.bufferTag;
-  }
-  set(tag) {
-    if (tag) {
-      this.bufferTag = tag;
+  return {
+    get() {
+      return _bufferTag;
+    },
+    set(tag) {
+      if (tag) {
+        _bufferTag = tag;
+      }
+    },
+    clear() {
+      _bufferTag = '';
     }
   }
-  clear() {
-    this.bufferTag = '';
-  }
-}
-
-const bufferNote = new BufferTagNote();
+})();
 
 
 class TextAreaField {
@@ -329,12 +337,12 @@ docObj.saveButton.addEventListener('click', (event) => {
   const areaField = docObj.textArea;
   
   if (areaField.value.trim().length && !(localData.checkDuplicate(areaField.value))) {
-    if (bufferNote.get()) {
-      editClickNote(areaField.value, switchClick, bufferNote, localData);
+    if (bufferTagNote.get()) {
+      editClickNote(areaField.value, switchClick, bufferTagNote, localData);
     } else {
       localData.saveOne(areaField.value);
       
-      viewList.wrapperTag(areaField.value);
+      viewList.wrapperTag(docObj.listNotes, areaField.value);
     }
     
     textAreaField.set();
@@ -360,7 +368,7 @@ docObj.listNotes.addEventListener("click", (event) => {
   event.stopPropagation();
   event.preventDefault();
   
-  bufferNote.set(switchClick.managementDoubleSingleClick(event));
+  bufferTagNote.set(switchClick.managementDoubleSingleClick(event));
 });
 
 
@@ -368,5 +376,5 @@ docObj.listNotes.addEventListener("click", (event) => {
 window.onload = () => {
   textAreaField.get();
   
-  viewList.storageShow(localData.parse());
+  viewList.storageShow(docObj.listNotes, localData.parse());
 };
