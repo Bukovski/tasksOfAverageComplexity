@@ -10,7 +10,6 @@ const docObj = {
 };
 
 
-
 class LocalData {
   constructor(storageName) {
     this.listObj = {};
@@ -72,21 +71,23 @@ class LocalData {
 }
 
 
-const cookieData = (function () {
-  function _replace(value) {
+class CookieData {
+  constructor() {}
+  
+  _replace(value) {
     return value.replace(/(<|>|_|@|{|}|\[|\])/g, '');
   }
   
-  function _encode(value) {
-    return _replace(encodeURIComponent(String(value)));
+  _encode(value) {
+    return this._replace(encodeURIComponent(String(value)));
   }
   
-  function _decode(value) {
-    return _replace(decodeURIComponent(String(value)));
+  _decode(value) {
+    return this._replace(decodeURIComponent(String(value)));
   }
   
   
-  function set(key, value, attr = {}) {
+  set(key, value, attr = {}) {
     if (typeof document === 'undefined' || !key || typeof attr !== 'object') return;
     
     if (attr.expires && typeof attr.expires === 'number') {
@@ -96,8 +97,8 @@ const cookieData = (function () {
     
     attr.expires = (attr.expires) ? attr.expires.toUTCString() : '';
     
-    key = _encode(key);
-    value = _encode(value);
+    key = this._encode(key);
+    value = this._encode(value);
     
     attr.path = (attr.path) ? attr.path : '/';
     attr.domain = (attr.domain) ? attr.domain : '';
@@ -120,32 +121,26 @@ const cookieData = (function () {
     return (document.cookie = key + '=' + value + stringAttributes);
   }
   
-  function get(key) {
+  get(key) {
     if (typeof document === 'undefined' || !key || typeof key !== 'string') return;
     
     let cookies = document.cookie ? document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)') : [];
     
-    return _decode(cookies[2]);
+    return this._decode(cookies[2]);
   }
   
-  function remove(key) {
-    return set(key, '', { expires: -1 });
+  remove(key) {
+    return this.set(key, '', { expires: -1 });
   }
-  
-  return {
-    set,
-    get,
-    remove
-  }
-})();
+}
 
-// cookieData.set("area", "awesome text", { expires: 7, path: '' });
-// cookieData.set("area", "awesome text", { expires: 7, secure: false });
-// cookieData.set("area", "new 55↵text<>lkj@_dfdf");
-// cookieData.set("area", "new 55↵text");
-// cookieData.set("area", "some text");
-// cookieData.remove("area");
-// console.log(cookieData.get("area"));
+// new CookieData.set("area", "awesome text", { expires: 7, path: '' });
+// new CookieData.set("area", "awesome text", { expires: 7, secure: false });
+// new CookieData.set("area", "new 55↵text<>lkj@_dfdf");
+// new CookieData.set("area", "new 55↵text");
+// new CookieData.set("area", "some text");
+// new CookieData.remove("area");
+// console.log(new CookieData.get("area"));
 
 
 class ViewList {
@@ -195,62 +190,6 @@ class ViewCleaner {
 }
 
 
-
-class SwitchClick {
-  constructor() {
-    this.firing = false;
-    this.timer = 0;
-  }
-  
-  textFromTag(value) {
-    const textTag = value.innerHTML.split("<span")[ 0 ];
-    
-    return textTag.trim();
-  }
-  deleteButtonOneClick(event, db, view) {
-    const { tagName, parentNode } = event.target;
-    
-    if (tagName === "SPAN" && parentNode.className === "textParagraph") {
-      const trimText = this.textFromTag(parentNode);
-  
-      db.removeOne(trimText);
-      view.removeTag(parentNode);
-    }
-  }
-  editNoteDoubleClick(event, tag) {
-    const target = event.target;
-    
-    if (target.tagName === "P" && target.className === "textParagraph") {
-      const trimText = this.textFromTag(event.target);
-      
-      tag.value = trimText;
-      
-      return target;
-    }
-  }
-  managementDoubleSingleClick(event, args) { //args { tag: textarea, db: localStorage, view: removeTagDom }
-    if (this.firing) { //двойной клик
-      clearTimeout(this.timer);
-      this.firing = false;
-      
-      return this.editNoteDoubleClick(event, args.tag);
-    }
-    
-    this.firing = true;
-    this.timer = setTimeout(() => { //один клик, если через 300 мск не кликнули второй раз то вызвать
-      this.deleteButtonOneClick(event, args.db, args.view);
-      
-      this.firing = false;
-    }, 300);
-    
-    return false;
-  }
-}
-
-const switchClick = new SwitchClick();
-
-
-
 const bufferTagNote = (function () {
   let _bufferTag = '';
   
@@ -270,27 +209,93 @@ const bufferTagNote = (function () {
 })();
 
 
-class TextAreaField {
-  constructor(textArea, cookie) {
-    this.area = textArea;
-    this.cookie = cookie;
-  }
+class EditButtons {
+  constructor() {}
   
-  get() {
-    const areaCookie = this.cookie.get("area");
+  textFromTag(value) {
+    const textTag = value.innerHTML.split("<span")[ 0 ];
     
-    return this.area.value = (areaCookie !== "undefined") ? areaCookie.replace(/↵/g, '\n ') : '';
+    return textTag.trim();
   }
-  set() {
-    this.cookie.set("area", this.area.value, { expires: 7 })
+  deleteOneClick(event, db, view) {
+    const { tagName, parentNode } = event.target;
+    
+    if (tagName === "SPAN" && parentNode.className === "textParagraph") {
+      const trimText = this.textFromTag(parentNode);
+      
+      db.removeOne(trimText);
+      view.removeTag(parentNode);
+    }
   }
-  clear() {
-    this.cookie.remove("area");
-    this.area.value = '';
+  editDoubleClick(event, tag) {
+    const target = event.target;
+    
+    if (target.tagName === "P" && target.className === "textParagraph") {
+      const trimText = this.textFromTag(event.target);
+      
+      tag.value = trimText;
+      
+      return target;
+    }
   }
 }
 
-const textAreaField = new TextAreaField(docObj.textArea, cookieData);
+
+class SwitchClick {
+  constructor(buttonEvent) {
+    this.firing = false;
+    this.timer = 0;
+    
+    this.buttonEvent = buttonEvent;
+  }
+  
+  managementDoubleSingleClick(event) {
+    if (this.firing) { //двойной клик
+      clearTimeout(this.timer);
+      this.firing = false;
+      
+      return this.buttonEvent.edit(event);
+    }
+    
+    this.firing = true;
+    this.timer = setTimeout(() => { //один клик, если через 300 мск не кликнули второй раз то вызвать
+      this.buttonEvent.delete(event);
+      
+      this.firing = false;
+    }, 300);
+    
+    return false;
+  }
+}
+
+const switchClick = new SwitchClick({
+  edit: (event) => new EditButtons().editDoubleClick(event, docObj.textArea),
+  delete: (event) => new EditButtons().deleteOneClick(event, new LocalData("textList"), new ViewCleaner())
+});
+
+
+class TextAreaField {
+  constructor(field, db, key) {
+    this.field = field;
+    this.db = db;
+    this.key = key;
+  }
+  
+  get() {
+    const areaCookie = this.db.get(this.key);
+    
+    return this.field.value = (areaCookie !== "undefined") ? areaCookie.replace(/↵/g, '\n ') : '';
+  }
+  set() {
+    this.db.set(this.key, this.field.value, { expires: 7 })
+  }
+  clear() {
+    this.db.remove(this.key);
+    this.field.value = '';
+  }
+}
+
+const textAreaField = new TextAreaField(docObj.textArea, new CookieData(), "area");
 
 
 function switchClicker(event) {
@@ -307,7 +312,7 @@ function switchClicker(event) {
       
       value = value.trim();
       
-      const oldText = new SwitchClick().textFromTag(switchSaveEdit);
+      const oldText = new EditButtons().textFromTag(switchSaveEdit);
       const newText = switchSaveEdit.innerHTML.replace(oldText, value);
       
       switchSaveEdit.innerHTML = newText;
@@ -346,7 +351,7 @@ docObj.listNotes.addEventListener("click", (event) => {
   event.stopPropagation();
   event.preventDefault();
   
-  bufferTagNote.set(switchClick.managementDoubleSingleClick(event, { tag: docObj.textArea, db: new LocalData("textList"), view: new ViewCleaner() }));
+  bufferTagNote.set(switchClick.managementDoubleSingleClick(event));
 });
 
 
