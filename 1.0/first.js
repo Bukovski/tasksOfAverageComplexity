@@ -10,78 +10,66 @@ const docObj = {
 };
 
 
-const LocalData = (function () {
-  let _dataName;
-  
-  return class {
-    constructor(dataName) {
-      this.listObj = {};
-      
-      _dataName = dataName;
-    }
+
+class LocalData {
+  constructor(storageName) {
+    this.listObj = {};
     
-    parse() {
-      if (!localStorage[ _dataName ]) {
-        localStorage[ _dataName ] = '{}'
-      }
-      
-      try {
-        this.listObj = JSON.parse(localStorage[ _dataName ]);
-      } catch (e) {
-        return {};
-      }
-      
-      return this.listObj;
-    }
-    
-    save() {
-      localStorage[ _dataName ] = JSON.stringify(this.listObj);
-      
-      return this.listObj;
-    }
-    
-    saveOne(text) {
-      this.parse();
-      
-      text = text.trim();
-      this.listObj[ text ] = "1";
-      
-      this.save();
-    }
-    
-    checkDuplicate(text) {
-      this.parse();
-      
-      text = text.trim();
-      
-      return !!this.listObj[ text ]
-    }
-    
-    removeOne(value) {
-      this.parse();
-      
-      delete this.listObj[ value ];
-      
-      this.save();
-    }
-    
-    removeAll() {
-      localStorage.removeItem(_dataName);
-    }
-    
-    changeOne(oldValue, newValue) {
-      const structuringDataOld = JSON.stringify(oldValue);
-      const structuringDataNew = JSON.stringify(newValue);
-      
-      const changeData = localStorage[ _dataName ].replace(structuringDataOld, structuringDataNew);
-      
-      localStorage[ _dataName ] = changeData;
-    }
+    this.storageName = storageName;
   }
-})();
-
-const localData = new LocalData("textList");
-
+  
+  parse() {
+    if (!localStorage[ this.storageName ]) {
+      localStorage[ this.storageName ] = '{}'
+    }
+    
+    try {
+      this.listObj = JSON.parse(localStorage[ this.storageName ]);
+    } catch (e) {
+      return {};
+    }
+    
+    return this.listObj;
+  }
+  save() {
+    localStorage[ this.storageName ] = JSON.stringify(this.listObj);
+    
+    return this.listObj;
+  }
+  saveOne(text) {
+    this.parse();
+    
+    text = text.trim();
+    this.listObj[ text ] = "1";
+    
+    this.save();
+  }
+  checkDuplicate(text) {
+    this.parse();
+    
+    text = text.trim();
+    
+    return !!this.listObj[ text ]
+  }
+  removeOne(value) {
+    this.parse();
+    
+    delete this.listObj[ value ];
+    
+    this.save();
+  }
+  removeAll() {
+    localStorage.removeItem(this.storageName);
+  }
+  changeOne(oldValue, newValue) {
+    const structuringDataOld = JSON.stringify(oldValue);
+    const structuringDataNew = JSON.stringify(newValue);
+    
+    const changeData = localStorage[ this.storageName ].replace(structuringDataOld, structuringDataNew);
+    
+    localStorage[ this.storageName ] = changeData;
+  }
+}
 
 
 const cookieData = (function () {
@@ -160,118 +148,106 @@ const cookieData = (function () {
 // console.log(cookieData.get("area"));
 
 
-const ViewList = (function () {
-  let _tag;
+class ViewList {
+  constructor() {}
   
-  return class {
-    constructor(tag) {
-      _tag = tag;
-    }
+  wrapperTag(insertInto, text) { //insert into
+    const newTag = document.createElement('p');
+    const tagInside = document.createElement('span');
     
-    wrapperTag(insertInto, text) { //insert into
-      const p = document.createElement('p');
-      const span = document.createElement('span');
-      
-      p.className = "textParagraph";
-      span.className = "delete";
-      
-      span.appendChild(document.createTextNode(' ' + String.fromCharCode(10006))); //вставляем крест
-      p.appendChild(document.createTextNode(text)); //текст перед крестом
-      
-      const tagP = insertInto.appendChild(p); //listNotes --> p
-      
-      tagP.appendChild(span); //добавили в p -> span
-    }
+    newTag.className = "textParagraph";
+    tagInside.className = "delete";
     
-    storageShow(insertInto, listObj) {
-      for (let list in listObj) {
-        this.wrapperTag(insertInto, list);
-      }
-    }
+    tagInside.appendChild(document.createTextNode(' ' + String.fromCharCode(10006))); //вставляем крест
+    newTag.appendChild(document.createTextNode(text)); //текст перед крестом
     
-    removeTag(tag) {
-      return tag.remove();
-    }
+    const tagWrapper = insertInto.appendChild(newTag); //listNotes --> p
     
-    clearDom() {
-      let length = _tag.length;
-      
-      while (length) {
-        length--;
-        
-        this.removeTag(_tag[ length ]);
-      }
-      
-      return null;
-    }
-  };
-})();
-
-const viewList = new ViewList(docObj.tagP);
-
-
-const SwitchClick = (function () {
-  let _firing = false;
-  let _timer = 0;
+    tagWrapper.appendChild(tagInside); //добавили в p -> span
+  }
   
-  let _localData;
-  let _viewList;
-  let _tag;
-  
-  return class {
-    constructor(localData, viewList, tag) {
-      _localData = localData;
-      _viewList = viewList;
-      _tag = tag;
-    }
-    
-    textFromTag(value) {
-      const textTag = value.innerHTML.split("<span")[ 0 ];
-      
-      return textTag.trim();
-    }
-    deleteButtonOneClick(event) {
-      const { tagName, parentNode } = event.target;
-      
-      if (tagName === "SPAN" && parentNode.className === "textParagraph") {
-        const trimText = this.textFromTag(parentNode);
-        
-        _localData.removeOne(trimText);
-        _viewList.removeTag(parentNode);
-      }
-    }
-    editNoteDoubleClick(event) {
-      const target = event.target;
-      
-      if (target.tagName === "P" && target.className === "textParagraph") {
-        const trimText = this.textFromTag(event.target);
-        
-        _tag.value = trimText;
-        
-        return target;
-      }
-    }
-    managementDoubleSingleClick(event) {
-      if (_firing) { //двойной клик
-        clearTimeout(_timer);
-        _firing = false;
-        
-        return this.editNoteDoubleClick(event);
-      }
-      
-      _firing = true;
-      _timer = setTimeout(() => { //один клик, если через 300 мск не кликнули второй раз то вызвать
-        this.deleteButtonOneClick(event);
-        
-        _firing = false;
-      }, 300);
-      
-      return false;
+  storageShow(insertInto, listObj) {
+    for (let list in listObj) {
+      this.wrapperTag(insertInto, list);
     }
   }
-})();
+}
 
-const switchClick = new SwitchClick(localData, viewList, docObj.textArea);
+
+class ViewCleaner {
+  constructor() {}
+  
+  removeTag(tag) {
+    return tag.remove();
+  }
+  
+  clearWrapperList(tag) {
+    let length = tag.length;
+    
+    while (length) {
+      length--;
+      
+      this.removeTag(tag[ length ]);
+    }
+    
+    return null;
+  }
+}
+
+
+
+class SwitchClick {
+  constructor() {
+    this.firing = false;
+    this.timer = 0;
+  }
+  
+  textFromTag(value) {
+    const textTag = value.innerHTML.split("<span")[ 0 ];
+    
+    return textTag.trim();
+  }
+  deleteButtonOneClick(event, db, view) {
+    const { tagName, parentNode } = event.target;
+    
+    if (tagName === "SPAN" && parentNode.className === "textParagraph") {
+      const trimText = this.textFromTag(parentNode);
+  
+      db.removeOne(trimText);
+      view.removeTag(parentNode);
+    }
+  }
+  editNoteDoubleClick(event, tag) {
+    const target = event.target;
+    
+    if (target.tagName === "P" && target.className === "textParagraph") {
+      const trimText = this.textFromTag(event.target);
+      
+      tag.value = trimText;
+      
+      return target;
+    }
+  }
+  managementDoubleSingleClick(event, args) { //args { tag: textarea, db: localStorage, view: removeTagDom }
+    if (this.firing) { //двойной клик
+      clearTimeout(this.timer);
+      this.firing = false;
+      
+      return this.editNoteDoubleClick(event, args.tag);
+    }
+    
+    this.firing = true;
+    this.timer = setTimeout(() => { //один клик, если через 300 мск не кликнули второй раз то вызвать
+      this.deleteButtonOneClick(event, args.db, args.view);
+      
+      this.firing = false;
+    }, 300);
+    
+    return false;
+  }
+}
+
+const switchClick = new SwitchClick();
 
 
 
@@ -317,37 +293,39 @@ class TextAreaField {
 const textAreaField = new TextAreaField(docObj.textArea, cookieData);
 
 
-function editClickNote(value, editTag, bufferTag, saveData) {
-  value = value.trim();
-  
-  const oldText = editTag.textFromTag(bufferTag.get());
-  const newText = bufferTag.get().innerHTML.replace(oldText, value);
-  
-  bufferTag.get().innerHTML = newText;
-  
-  saveData.changeOne(oldText, value);
-  
-  bufferTag.clear();
-}
-
-
-docObj.saveButton.addEventListener('click', (event) => {
+function switchClicker(event) {
   event.preventDefault();
   
   const areaField = docObj.textArea;
+  const localData = new LocalData("textList");
   
   if (areaField.value.trim().length && !(localData.checkDuplicate(areaField.value))) {
-    if (bufferTagNote.get()) {
-      editClickNote(areaField.value, switchClick, bufferTagNote, localData);
+    const switchSaveEdit = bufferTagNote.get();
+    
+    if (switchSaveEdit) {
+      let value = areaField.value;
+      
+      value = value.trim();
+      
+      const oldText = new SwitchClick().textFromTag(switchSaveEdit);
+      const newText = switchSaveEdit.innerHTML.replace(oldText, value);
+      
+      switchSaveEdit.innerHTML = newText;
+      
+      localData.changeOne(oldText, value);
+      
+      bufferTagNote.clear();
     } else {
       localData.saveOne(areaField.value);
       
-      viewList.wrapperTag(docObj.listNotes, areaField.value);
+      new ViewList().wrapperTag(docObj.listNotes, areaField.value);
     }
     
     textAreaField.set();
   }
-});
+}
+
+docObj.saveButton.addEventListener('click', switchClicker);
 
 
 docObj.clearAreaButton.addEventListener('click', (event) => {
@@ -358,9 +336,9 @@ docObj.clearAreaButton.addEventListener('click', (event) => {
 docObj.clearListButton.addEventListener('click', (event) => {
   event.preventDefault();
   
-  localData.removeAll();
+  new LocalData("textList").removeAll();
   
-  viewList.clearDom()
+  new ViewCleaner().clearWrapperList();
 });
 
 
@@ -368,7 +346,7 @@ docObj.listNotes.addEventListener("click", (event) => {
   event.stopPropagation();
   event.preventDefault();
   
-  bufferTagNote.set(switchClick.managementDoubleSingleClick(event));
+  bufferTagNote.set(switchClick.managementDoubleSingleClick(event, { tag: docObj.textArea, db: new LocalData("textList"), view: new ViewCleaner() }));
 });
 
 
@@ -376,5 +354,5 @@ docObj.listNotes.addEventListener("click", (event) => {
 window.onload = () => {
   textAreaField.get();
   
-  viewList.storageShow(docObj.listNotes, localData.parse());
+  new ViewList().storageShow(docObj.listNotes, new LocalData("textList").parse());
 };
