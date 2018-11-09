@@ -1,3 +1,5 @@
+"use strict";
+
 const doc = document;
 
 const docObj = {
@@ -7,6 +9,11 @@ const docObj = {
   clearListButton: doc.getElementsByTagName('button')[2],
   listNotes: doc.getElementById('listNotes'),
   tagP: doc.getElementsByTagName('p')
+};
+
+const settings = {
+  LOCAL_STORAGE_NAME: 'textList',
+  COOKIE_NAME: 'area'
 };
 
 
@@ -258,11 +265,11 @@ class SwitchClick {
     }
     
     this.firing = true;
-    this.timer = setTimeout(() => { //один клик, если через 300 мск не кликнули второй раз то вызвать
+    this.timer = setTimeout(() => { //один клик, если через 150 мск не кликнули второй раз то вызвать
       this.buttonEvent.delete(event);
       
       this.firing = false;
-    }, 300);
+    }, 150);
     
     return false;
   }
@@ -270,11 +277,11 @@ class SwitchClick {
 
 const switchClick = new SwitchClick({
   edit: (event) => new EditButtons().editDoubleClick(event, docObj.textArea),
-  delete: (event) => new EditButtons().deleteOneClick(event, new LocalData("textList"), new ViewCleaner())
+  delete: (event) => new EditButtons().deleteOneClick(event, new LocalData(settings.LOCAL_STORAGE_NAME), new ViewCleaner())
 });
 
 
-class TextAreaField {
+class TextField {
   constructor(field, db, key) {
     this.field = field;
     this.db = db;
@@ -295,14 +302,14 @@ class TextAreaField {
   }
 }
 
-const textAreaField = new TextAreaField(docObj.textArea, new CookieData(), "area");
+const textField = new TextField(docObj.textArea, new CookieData(), settings.COOKIE_NAME);
 
 
 function switchClicker(event) {
   event.preventDefault();
   
   const areaField = docObj.textArea;
-  const localData = new LocalData("textList");
+  const localData = new LocalData(settings.LOCAL_STORAGE_NAME);
   
   if (areaField.value.trim().length && !(localData.checkDuplicate(areaField.value))) {
     const switchSaveEdit = bufferTagNote.get();
@@ -326,7 +333,7 @@ function switchClicker(event) {
       new ViewList().wrapperTag(docObj.listNotes, areaField.value);
     }
     
-    textAreaField.set();
+    textField.set();
   }
 }
 
@@ -334,14 +341,14 @@ docObj.saveButton.addEventListener('click', switchClicker);
 
 
 docObj.clearAreaButton.addEventListener('click', (event) => {
-  textAreaField.clear();
+  textField.clear();
 });
 
 
 docObj.clearListButton.addEventListener('click', (event) => {
   event.preventDefault();
   
-  new LocalData("textList").removeAll();
+  new LocalData(settings.LOCAL_STORAGE_NAME).removeAll();
   
   new ViewCleaner().clearWrapperList();
 });
@@ -357,7 +364,7 @@ docObj.listNotes.addEventListener("click", (event) => {
 
 
 window.onload = () => {
-  textAreaField.get();
+  textField.get();
   
-  new ViewList().storageShow(docObj.listNotes, new LocalData("textList").parse());
+  new ViewList().storageShow(docObj.listNotes, new LocalData(settings.LOCAL_STORAGE_NAME).parse());
 };
