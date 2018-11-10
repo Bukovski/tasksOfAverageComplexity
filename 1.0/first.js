@@ -50,7 +50,7 @@ class LocalData {
     
     this.save();
   }
-  checkDuplicate(text) {
+  isDuplicate(text) {
     this.parse();
     
     text = text.trim();
@@ -260,7 +260,6 @@ class SwitchClick {
     if (this.firing) { //двойной клик
       clearTimeout(this.timer);
       this.firing = false;
-      
       return this.buttonEvent.edit(event);
     }
     
@@ -269,7 +268,7 @@ class SwitchClick {
       this.buttonEvent.delete(event);
       
       this.firing = false;
-    }, 150);
+    }, 300);
     
     return false;
   }
@@ -291,7 +290,7 @@ class TextField {
   get() {
     const areaCookie = this.db.get(this.key);
     
-    return this.field.value = (areaCookie !== "undefined") ? areaCookie.replace(/↵/g, '\n ') : '';
+    return this.field.value = (areaCookie !== "undefined") ? areaCookie : '';
   }
   set() {
     this.db.set(this.key, this.field.value, { expires: 7 })
@@ -311,7 +310,7 @@ function switchClicker(event) {
   const areaField = docObj.textArea;
   const localData = new LocalData(settings.LOCAL_STORAGE_NAME);
   
-  if (areaField.value.trim().length && !(localData.checkDuplicate(areaField.value))) {
+  if (areaField.value.trim().length && !(localData.isDuplicate(areaField.value))) {
     const switchSaveEdit = bufferTagNote.get();
     
     if (switchSaveEdit) {
@@ -350,7 +349,7 @@ docObj.clearListButton.addEventListener('click', (event) => {
   
   new LocalData(settings.LOCAL_STORAGE_NAME).removeAll();
   
-  new ViewCleaner().clearWrapperList();
+  new ViewCleaner().clearWrapperList(docObj.tagP);
 });
 
 
