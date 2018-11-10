@@ -82,7 +82,7 @@ class CookieData {
   constructor() {}
   
   _replace(value) {
-    return value.replace(/(<|>|_|@|{|}|\[|\])/g, '');
+    return value.replace(/%(23|24|26|2B|3A|3C|3E|3D|2F|3F|40|5B|5D|5E|60|7B|7D|7C)/g, '');
   }
   
   _encode(value) {
@@ -90,7 +90,7 @@ class CookieData {
   }
   
   _decode(value) {
-    return this._replace(decodeURIComponent(String(value)));
+    return decodeURIComponent(String(value));
   }
   
   
@@ -129,7 +129,7 @@ class CookieData {
   }
   
   get(key) {
-    if (typeof document === 'undefined' || !key || typeof key !== 'string') return;
+    if (typeof document === 'undefined' || !key || typeof key !== 'string') return [];
     
     let cookies = document.cookie ? document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)') : [];
     
@@ -141,13 +141,13 @@ class CookieData {
   }
 }
 
-// new CookieData.set("area", "awesome text", { expires: 7, path: '' });
-// new CookieData.set("area", "awesome text", { expires: 7, secure: false });
-// new CookieData.set("area", "new 55↵text<>lkj@_dfdf");
-// new CookieData.set("area", "new 55↵text");
-// new CookieData.set("area", "some text");
-// new CookieData.remove("area");
-// console.log(new CookieData.get("area"));
+// new CookieData().set("area", "awesome text", { expires: 7, path: '' });
+// new CookieData().set("area", "awesome text", { expires: 7, secure: false });
+// new CookieData().set("area", "new 55↵text<>lkj@_dfdf");
+// new CookieData().set("area", "new 55↵text");
+// new CookieData().set("area", "some text");
+// new CookieData().remove("area");
+// console.log(new CookieData().get("area"));
 
 
 class ViewList {
