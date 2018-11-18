@@ -2,6 +2,8 @@
 
 const doc = document;
 
+// delete window.indexedDB; //<-- for test how to work a mobile devices
+
 const docObj = {
   textArea: doc.getElementsByTagName('textarea')[0],
   saveButton: doc.getElementsByTagName('button')[0],
@@ -20,7 +22,7 @@ const SETTINGS = {
 };
 
 
-class LocalData {
+class LocalStorageData {
   constructor(storageName) {
     this.listObj = {};
     
@@ -45,10 +47,17 @@ class LocalData {
     
     return this.listObj;
   }
-  showAll() {
+  showAll() { //obj -> arr
     this.parse();
-  
-    return this.listObj;
+    
+    const dataObj = this.listObj;
+    let dataArr = [];
+    
+    for(let valueObj in dataObj) {
+      dataArr = dataArr.concat(valueObj);
+    }
+    
+    return dataArr;
   }
   saveOne(text) {
     this.parse();
@@ -58,17 +67,17 @@ class LocalData {
     
     this.save();
   }
-  isDuplicate(text) {
+  isDuplicate(text) { //text -> bool
     this.parse();
     
     text = text.trim();
     
     return !!this.listObj[ text ]
   }
-  removeOne(value) {
+  removeOne(text) {
     this.parse();
     
-    delete this.listObj[ value ];
+    delete this.listObj[ text ];
     
     this.save();
   }
@@ -84,6 +93,165 @@ class LocalData {
     localStorage[ this.storageName ] = changeData;
   }
 }
+
+class IDBData {
+  constructor(dbName, version, storageName) {
+    this._dbName = dbName || SETTINGS.INDEXED_DB_NAME;
+    this._version = version || SETTINGS.INDEXED_DB_VERSION;
+    this._storageName = storageName || SETTINGS.INDEXED_DB_STORAGE;
+    this._db = null;
+  }
+  
+  parse() {
+    const idb = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+    
+    const openRequest = idb.open(this._dbName, this._version);
+    
+    return new Promise((resolve, reject) => {
+      openRequest.onerror = (event) => {
+        reject(event.target.error.message);
+      };
+      
+      openRequest.onsuccess = (event) => {
+        try {
+          const target = event.target;
+          const db = target.result;
+          this._db = target.result;
+          
+          resolve(db);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      
+      openRequest.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        
+        if(!db.objectStoreNames.contains(this._storageName)) {
+          const objectStore = db.createObjectStore(this._storageName, { autoIncrement: true });
+          
+          objectStore.createIndex("text", "text", { unique: true });
+        }
+      };
+    });
+  }
+  close() {
+    this._db.close();
+    this._db = null;
+  }
+  async _store(readOnlyWrite) {
+    readOnlyWrite = (typeof readOnlyWrite === 'boolean' && readOnlyWrite === true) ? "readonly" : "readwrite";
+    
+    const db = await this.parse();
+    const tx = db.transaction(this._storageName, readOnlyWrite);
+    
+    return { tx, store: tx.objectStore(this._storageName) }
+  }
+  async showAll() { //arr obj -> arr
+    const { store } = await this._store(true);
+    const data = store.getAll();
+    
+    this.close();
+    
+    return new Promise(resolve => {
+      data.onsuccess = event => resolve(event.target.result.map(elem => elem.text));
+      data.onerror = event => resolve([]);
+    });
+  }
+  async saveOne(text) {
+    text = text.trim();
+    
+    const { store } = await this._store();
+    
+    store.add({ text: text });
+    
+    this.close();
+  }
+  async isDuplicate(text) { //text -> bool
+    text = text.trim();
+    
+    const { store } = await this._store(true);
+    const data = store.index("text").get(text);
+    
+    this.close();
+    
+    return new Promise(resolve => {
+      data.onsuccess = event => resolve(!!event.target.result);
+      data.onerror = event => resolve(false);
+    });
+  }
+  async removeOne(text) {
+    const { store } = await this._store();
+    
+    const index = store.index("text"); // add, clear, count, delete, get, getAll, getAllKeys, getKey, put
+    
+    index.getKey(text).onsuccess = (event) => {
+      const key = event.target.result;
+      
+      store.delete(key)
+    };
+    
+    this.close();
+  }
+  async removeAll() {
+    const { store } = await this._store();
+    
+    store.clear();
+    
+    this.close();
+  }
+  async changeOne(oldValue, newValue) {
+    const { store } = await this._store();
+  
+    const index = store.index("text");
+    
+    index.openCursor(oldValue).onsuccess = (event) => {
+      const cursor = event.target.result;
+      
+      cursor.update({ text: newValue })
+    };
+    
+    this.close();
+  }
+}
+
+
+class LocalData {
+  constructor(ls, idb) {
+    this._localStorage = ls;
+    this._indexedDB = idb;
+  }
+  
+  _managerData() {
+    const idb = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+    
+    if(!idb) return this._localStorage;
+    
+    return this._indexedDB;
+  }
+  showAll() {
+    return Promise.resolve().then(() => this._managerData().showAll());
+  }
+  saveOne(text) {
+    this._managerData().saveOne(text);
+  }
+  isDuplicate(text) {
+    return Promise.resolve().then(() => this._managerData().isDuplicate(text));
+  }
+  removeOne(text) {
+    this._managerData().removeOne(text);
+  }
+  removeAll() {
+    this._managerData().removeAll();
+  }
+  changeOne(oldValue, newValue) {
+    this._managerData().changeOne(oldValue, newValue);
+  }
+}
+
+const localStorageData = new LocalStorageData();
+const idbData = new IDBData();
+const localData = new LocalData(localStorageData, idbData);
 
 
 class CookieData {
@@ -113,7 +281,7 @@ class CookieData {
     }
     
     attr.expires = (attr.expires) ? attr.expires.toUTCString() : '';
-  
+    
     this.key = this._encode(this.key);
     value = this._encode(value);
     
@@ -179,7 +347,7 @@ class ViewList {
   }
   
   storageShow(insertInto, listObj) {
-    for (let list in listObj) {
+    for (let list of listObj) {
       this.wrapperTag(insertInto, list);
     }
   }
@@ -286,7 +454,7 @@ class SwitchClick {
 
 const switchClick = new SwitchClick({
   edit: (event) => new EditButtons().editDoubleClick(event, docObj.textArea),
-  delete: (event) => new EditButtons().deleteOneClick(event, new LocalData(), new ViewCleaner())
+  delete: (event) => new EditButtons().deleteOneClick(event, localData, new ViewCleaner())
 });
 
 
@@ -317,9 +485,9 @@ function switchClicker(event) {
   event.preventDefault();
   
   const areaField = docObj.textArea;
-  const localData = new LocalData();
   
-  if (areaField.value.trim().length && !(localData.isDuplicate(areaField.value))) {
+  if (localData.isDuplicate(areaField.value)
+    .then(dataStorage => areaField.value.trim().length && !(dataStorage))) {
     const switchSaveEdit = bufferTagNote.get();
     
     if (switchSaveEdit) {
@@ -356,7 +524,7 @@ docObj.clearAreaButton.addEventListener('click', (event) => {
 docObj.clearListButton.addEventListener('click', (event) => {
   event.preventDefault();
   
-  new LocalData().removeAll();
+  localData.removeAll();
   
   new ViewCleaner().clearWrapperList(docObj.tagP);
 });
@@ -374,5 +542,5 @@ docObj.listNotes.addEventListener("click", (event) => {
 window.onload = () => {
   textField.get();
   
-  new ViewList().storageShow(docObj.listNotes, new LocalData().showAll());
+  localData.showAll().then(dataStorage => new ViewList().storageShow(docObj.listNotes, dataStorage));
 };
