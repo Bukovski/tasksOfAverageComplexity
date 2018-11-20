@@ -142,14 +142,27 @@ class IDBData {
   async _store(readOnlyWrite) {
     readOnlyWrite = (typeof readOnlyWrite === 'boolean' && readOnlyWrite === true) ? "readonly" : "readwrite";
     
-    const db = await this.parse();
-    const tx = db.transaction(this._storageName, readOnlyWrite);
-    
-    return { tx, store: tx.objectStore(this._storageName) }
+    try {
+      const db = await this.parse();
+      const tx = db.transaction(this._storageName, readOnlyWrite);
+  
+      return { tx, store: tx.objectStore(this._storageName) }
+    } catch (e) {
+      throw new Error("IDBData don't parse");
+    }
   }
   async showAll() { //arr obj -> arr
-    const { store } = await this._store(true);
-    const data = store.getAll();
+    let data;
+    
+    try {
+      const { store } = await this._store(true);
+      
+      data = store.getAll();
+    } catch (e) {
+      this.close();
+      
+      return Promise.resolve().then(() => []);
+    }
     
     this.close();
     
@@ -161,17 +174,27 @@ class IDBData {
   async saveOne(text) {
     text = text.trim();
     
-    const { store } = await this._store();
-    
-    store.add({ text: text });
+    try {
+      const { store } = await this._store();
+  
+      store.add({ text: text });
+    } catch (e) {}
     
     this.close();
   }
   async isDuplicate(text) { //text -> bool
     text = text.trim();
     
-    const { store } = await this._store(true);
-    const data = store.index("text").get(text);
+    let data;
+    
+    try {
+      const { store } = await this._store(true);
+      data = store.index("text").get(text);
+    } catch (e) {
+      this.close();
+      
+      return Promise.resolve().then(() => false);
+    }
     
     this.close();
     
@@ -181,35 +204,41 @@ class IDBData {
     });
   }
   async removeOne(text) {
-    const { store } = await this._store();
+    try {
+      const { store } = await this._store();
+  
+      const index = store.index("text"); // add, clear, count, delete, get, getAll, getAllKeys, getKey, put
+  
+      index.getKey(text).onsuccess = (event) => {
+        const key = event.target.result;
     
-    const index = store.index("text"); // add, clear, count, delete, get, getAll, getAllKeys, getKey, put
-    
-    index.getKey(text).onsuccess = (event) => {
-      const key = event.target.result;
-      
-      store.delete(key)
-    };
+        store.delete(key)
+      };
+    } catch (e) {}
     
     this.close();
   }
   async removeAll() {
-    const { store } = await this._store();
-    
-    store.clear();
+    try {
+      const { store } = await this._store();
+  
+      store.clear();
+    } catch (e) {}
     
     this.close();
   }
   async changeOne(oldValue, newValue) {
-    const { store } = await this._store();
+    try {
+      const { store } = await this._store();
   
-    const index = store.index("text");
+      const index = store.index("text");
+  
+      index.openCursor(oldValue).onsuccess = (event) => {
+        const cursor = event.target.result;
     
-    index.openCursor(oldValue).onsuccess = (event) => {
-      const cursor = event.target.result;
-      
-      cursor.update({ text: newValue })
-    };
+        cursor.update({ text: newValue })
+      };
+    } catch (e) {}
     
     this.close();
   }
@@ -442,7 +471,8 @@ class SwitchClick {
     }
     
     this.firing = true;
-    this.timer = setTimeout(() => { //один клик, если через 150 мск не кликнули второй раз то вызвать
+    this.timer = setTimeout(() => {
+      //один клик, если через 150 мск не кликнули второй раз то вызвать
       this.buttonEvent.delete(event);
       
       this.firing = false;
