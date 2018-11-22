@@ -39,6 +39,8 @@ class LocalStorageData {
     try {
       this.listObj = JSON.parse(localStorage[ nameStorage ]);
     } catch (e) {
+      console.warn("Empty parse LS");
+      
       return {};
     }
   }
@@ -367,12 +369,12 @@ class ViewList {
     newTag.className = "textParagraph";
     tagInside.className = "delete";
     
-    tagInside.appendChild(document.createTextNode(' ' + String.fromCharCode(10006))); //вставляем крест
-    newTag.appendChild(document.createTextNode(text)); //текст перед крестом
-    
+    tagInside.appendChild(document.createTextNode(' ' + String.fromCharCode(10006))); //add text
+    newTag.appendChild(document.createTextNode(text)); //text before the cross to remove
+  
     const tagWrapper = insertInto.appendChild(newTag); //listNotes --> p
     
-    tagWrapper.appendChild(tagInside); //добавили в p -> span
+    tagWrapper.appendChild(tagInside); //p -> span
   }
   
   storageShow(insertInto, listObj) {
@@ -464,7 +466,7 @@ class SwitchClick {
   }
   
   managementDoubleSingleClick(event) {
-    if (this.firing) { //двойной клик
+    if (this.firing) { //double click
       clearTimeout(this.timer);
       this.firing = false;
       return this.buttonEvent.edit(event);
@@ -472,7 +474,7 @@ class SwitchClick {
     
     this.firing = true;
     this.timer = setTimeout(() => {
-      //один клик, если через 150 мск не кликнули второй раз то вызвать
+      //if clicking is not repeated after the 300ms, call (one click)
       this.buttonEvent.delete(event);
       
       this.firing = false;
@@ -511,13 +513,13 @@ class TextField {
 const textField = new TextField(docObj.textArea, new CookieData());
 
 
-function switchClicker(event) {
+async function switchClicker(event) {
   event.preventDefault();
   
   const areaField = docObj.textArea;
+  const dataStorage = await localData.isDuplicate(areaField.value);
   
-  if (localData.isDuplicate(areaField.value)
-    .then(dataStorage => areaField.value.trim().length && !(dataStorage))) {
+  if (areaField.value.trim().length && !(dataStorage)) {
     const switchSaveEdit = bufferTagNote.get();
     
     if (switchSaveEdit) {
@@ -543,34 +545,38 @@ function switchClicker(event) {
   }
 }
 
-docObj.saveButton.addEventListener('click', switchClicker);
 
-
-docObj.clearAreaButton.addEventListener('click', (event) => {
-  textField.clear();
-});
-
-
-docObj.clearListButton.addEventListener('click', (event) => {
-  event.preventDefault();
+const initListeners = () => {
+  docObj.saveButton.addEventListener('click', switchClicker);
   
-  localData.removeAll();
   
-  new ViewCleaner().clearWrapperList(docObj.tagP);
-});
-
-
-docObj.listNotes.addEventListener("click", (event) => {
-  event.stopPropagation();
-  event.preventDefault();
+  docObj.clearAreaButton.addEventListener('click', (event) => {
+    textField.clear();
+  });
   
-  bufferTagNote.set(switchClick.managementDoubleSingleClick(event));
-});
-
+  
+  docObj.clearListButton.addEventListener('click', (event) => {
+    event.preventDefault();
+    
+    localData.removeAll();
+    
+    new ViewCleaner().clearWrapperList(docObj.tagP);
+  });
+  
+  
+  docObj.listNotes.addEventListener("click", (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    bufferTagNote.set(switchClick.managementDoubleSingleClick(event));
+  });
+};
 
 
 window.onload = () => {
   textField.get();
   
   localData.showAll().then(dataStorage => new ViewList().storageShow(docObj.listNotes, dataStorage));
+  
+  initListeners();
 };
