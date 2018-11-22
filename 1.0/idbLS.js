@@ -573,10 +573,12 @@ const initListeners = () => {
 };
 
 
-window.onload = () => {
+window.onload = async () => {
+  const dataStorage = await localData.showAll();
+  
   textField.get();
   
-  localData.showAll().then(dataStorage => new ViewList().storageShow(docObj.listNotes, dataStorage));
+  new ViewList().storageShow(docObj.listNotes, dataStorage);
   
   initListeners();
 };
