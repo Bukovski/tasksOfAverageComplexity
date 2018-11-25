@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "simple comment list in browser",
   "main": "index.js",
+  "repository": "github:Bukovski/tasksOfAverageComplexity/tree/master/1.DOMCreateCommentsList",
   "scripts": {
     "doc": "sensible-browser ./out/index.html",
     "open": "sensible-browser ./first.html"
