@@ -1,0 +1,13 @@
+{
+  "name": "comment_list",
+  "version": "1.0.0",
+  "description": "simple comment list in browser",
+  "main": "index.js",
+  "scripts": {
+    "doc": "sensible-browser ./out/index.html",
+    "open": "sensible-browser ./first.html"
+  },
+  "keywords": ["todo", "todo list", "comment", "js todo", "js comment"],
+  "author": "Bukovski",
+  "license": "ISC"
+}
