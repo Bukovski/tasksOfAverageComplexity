@@ -1,14 +1,14 @@
 {
   "name": "2.test-Unit-Integrational-E2E",
   "version": "1.0.0",
-  "description": "decision home tasks",
-  "main": "index.js",
+  "description": "samples testing javascript",
+  "main": "files/index.js",
   "scripts": {
     "coverage": "nyc --reporter=html --reporter=text mocha ./test/*/*.test.js",
     "showcoverage": "xdg-open ./coverage/index.html",
     "watch": "mocha --opts ./test/mocha.opts -w"
   },
-  "keywords": [],
+  "keywords": ["mocha", "chai", "sinon", "nyc", "test coverage", "chai-as-promised", "js test", "testing javascript", "test example", "js test example", "example sinon", "example chai", "example mocha"],
   "author": "",
   "license": "ISC",
   "dependencies": {
